@@ -1,6 +1,12 @@
 import { config } from '../config.js';
 import { geocodeCity, getForecast } from './open-meteo.js';
 import { describeWeatherCode } from './weather-codes.js';
+import { TtlCache } from './cache.js';
+
+// One cache for the whole app.
+const cache = new TtlCache(config.cacheTtlSeconds);
+let hits = 0;
+let misses = 0;
 
 function buildSummary(place, forecast, fetchedAt) {
   const daily = forecast.daily;
@@ -35,13 +41,37 @@ function buildSummary(place, forecast, fetchedAt) {
     cached: false,
   };
 }
-// TODO (you): return the cache statistics for GET /api/cache/stats.
+
+// Return the weather summary for one city (from the cache when possible).
 export async function getCityWeather(city) {
+  const key = city.trim().toLowerCase();
+
+  const stored = cache.get(key);
+  if (stored) {
+    hits += 1;
+    return { ...stored, cached: true };
+  }
+
+  // Anything that isn't a valid cached answer is a miss, even if the lookup
+  // fails below.
+  misses += 1;
+
   const fetchedAt = new Date().toISOString();
   const place = await geocodeCity(city);
   const forecast = await getForecast(place.latitude, place.longitude);
-  return buildSummary(place, forecast, fetchedAt);
+  const summary = buildSummary(place, forecast, fetchedAt);
+
+  // Only successful lookups reach this line, so failures are never cached.
+  cache.set(key, summary);
+  return summary;
 }
+
+// The numbers for GET /api/cache/stats.
 export function getCacheStats() {
-  throw new Error('getCacheStats is not written yet');
+  return {
+    entries: cache.size(),
+    hits,
+    misses,
+    ttlSeconds: config.cacheTtlSeconds,
+  };
 }

@@ -1,4 +1,35 @@
-// TODO (you): an in-memory cache where each entry expires after a set time.
-// It needs a way to get a value (counting a hit or a miss), store a value,
-// and report { entries, hits, misses, ttlSeconds }. The exact counting rules
-// are on the assignment page. A Map with { value, expiresAt } entries works well.
+// A small in-memory cache where every entry expires after a set time.
+export class TtlCache {
+    constructor(ttlSeconds) {
+      this.ttlMs = ttlSeconds * 1000;
+      this.items = new Map();
+    }
+  
+    // Return the stored value, or undefined when missing or expired.
+    get(key) {
+      const item = this.items.get(key);
+      if (!item) {
+        return undefined;
+      }
+      if (Date.now() >= item.expiresAt) {
+        this.items.delete(key);
+        return undefined;
+      }
+      return item.value;
+    }
+  
+    set(key, value) {
+      this.items.set(key, { value, expiresAt: Date.now() + this.ttlMs });
+    }
+  
+    // Count only the entries that haven't expired.
+    size() {
+      const now = Date.now();
+      for (const [key, item] of this.items) {
+        if (now >= item.expiresAt) {
+          this.items.delete(key);
+        }
+      }
+      return this.items.size;
+    }
+  }
