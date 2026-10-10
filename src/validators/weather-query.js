@@ -13,7 +13,6 @@ export function parseCity(value) {
     throw invalid('city', 'city is required');
   }
   if (typeof value !== 'string') {
-    // A repeated parameter (?city=a&city=b) arrives as an array.
     throw invalid('city', 'city must be sent only once');
   }
 
@@ -26,8 +25,6 @@ export function parseCity(value) {
   }
   return city;
 }
-
-// Check ?cities= and return an array of trimmed city names.
 export function parseCities(value) {
   if (value === undefined) {
     throw invalid('cities', 'cities is required');
@@ -62,6 +59,5 @@ export function parseCities(value) {
     }
     seen.add(key);
   }
-
   return names;
 }
